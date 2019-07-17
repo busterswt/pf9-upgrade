@@ -1,0 +1,37 @@
+---
+# Check to ensure no instances are running (virsh) (FAIL if not, or stop all instances)
+# We will ignore an error here, incase it's a host that needs to be upgraded
+# that isn't running libvirt
+- name: Check for running instances on host
+  virt:
+    command: list_vms
+    state: running
+  register: running_vms
+  ignore_errors: true
+
+- name: Show running instances
+  debug:
+    msg: "Running instances: {{ running_vms.list_vms }}"
+  when:
+    - running_vms.list_vms is defined
+
+- name: Fail if instances are running
+  fail:
+    msg: "Instances are running on this host. Please stop running instances and rerun the playbook."
+  when:
+    - (running_vms.list_vms | default("") | length>0)
+
+# Will want to consider package_facts, but it's currently broken.
+- name: Gather installed packages
+  command: dpkg-query -f '${Package}\n' -W
+  register: installed_packages
+
+- debug:
+    msg: "Installed packages - {{ installed_packages.stdout_lines }}"
+
+# Check that pf9-hostagent is installed (FAIL if not)
+## TEMPORARY disable
+##- name: Fail if Platform9 Host Agent is not installed
+##  fail:
+##    msg: "Node does not appear to be a PF9 managed node or there is something wrong with pf9-hostagent. Exiting..."
+##  when: "'pf9-hostagent' not in installed_packages.stdout_lines"

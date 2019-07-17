@@ -1,0 +1,125 @@
+---
+# This is the 16.04 task file
+# Tasks here will prepare/perform upgrade(s)
+
+- name: Check for reboot file
+  stat:
+    path: /tmp/reboot_needed
+  register: reboot_needed
+
+- name: Fail if reboot is needed
+  fail:
+    msg: Please reboot the host before proceeding
+  when: reboot_needed.stat.exists
+
+- name: Set release-upgrades prompt to lts
+  ini_file:
+    path: /etc/update-manager/release-upgrades
+    section: DEFAULT
+    option: Prompt
+    value: lts
+    mode: '0600'
+    backup: yes
+
+- name: Create prompt override file
+  copy:
+    dest: /etc/apt/apt.conf.d/pf9-upgrade-prompts
+    content: 'DPkg::options { "--force-confdef"; "--force-confnew"; }'
+
+- name: Run apt upgrade
+  apt:
+    upgrade: yes
+    update_cache: yes
+    cache_valid_time: 3600
+  register: apt_upgrade
+
+- name: Run apt dist-upgrade
+  apt:
+    upgrade: dist
+    update_cache: yes
+    cache_valid_time: 3600
+  register: apt_dist_upgrade
+
+#- name: Install HWE kernel
+#  apt:
+#    update_cache: yes
+#    cache_valid_time: 3600
+#    install_recommends: yes
+#    name: "{{ packages }}"
+#  vars:
+#    packages:
+#    - linux-generic-hwe-16.04
+#  register: kernel_update
+
+- name: Install necessary packages
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - python-pip
+    - update-manager-core
+    - haproxy=1.6.*
+
+- debug:
+    msg: "{{ apt_upgrade }}"
+
+- debug:
+    msg: "{{ apt_dist_upgrade }}"
+
+# Convert init scripts to systemd units
+- include_tasks: init-systemd.yml
+
+# Fix libvirt issues post-upgrade
+- include_tasks: fix-libvirt.yml
+
+# Remove incompatible python-openssl and replace with pyopenssl
+- name: Remove incompatible python-openssl
+  apt:
+    name: python-openssl
+    state: absent
+    purge: yes
+
+- name: Install pyopenssl from pip
+  pip:
+    name: pyopenssl
+    state: present
+
+- name: Upgrade python-apt (if installed)
+  apt:
+    name: python-apt
+    only_upgrade: yes
+
+# Do some cleanup
+- name: Remove useless packages from the cache
+  apt:
+    autoclean: yes
+
+- name: Remove dependencies that are no longer required
+  apt:
+    autoremove: yes
+
+# Restart host agent due to systemd funkiness
+- name: Restart pf9-hostagent service
+  service:
+    name: pf9-hostagent
+    state: restarted
+
+- name: Delete prompt override file
+  file:
+    path: /etc/apt/apt.conf.d/pf9-upgrade-prompts
+    state: absent
+
+# Reboot the host if apt_upgrade, apt_dist_upgrade, or kernel_update changed
+- name: Reboot host after initial apt upgrades
+  reboot:
+    msg: "Platform9 - Host is being rebooted for upgrades!"
+    reboot_timeout: 900
+    post_reboot_delay: 30
+    test_command: uname
+  when: apt_upgrade.changed or apt_dist_upgrade.changed
+  register: reboot_results
+
+- debug:
+    msg: "Reboot results: {{ reboot_results | default('N/A') }}"

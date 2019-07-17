@@ -1,0 +1,21 @@
+[Unit]
+Description=Platform9 Communications Service
+ConditionPathExists=/opt/pf9/comms/pf9-comms.js
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/pf9/pf9-comms.env
+ExecStartPre=/bin/mkdir -p /var/log/pf9/comms
+ExecStart=/bin/bash -c '/opt/pf9/comms/pf9-comms.js >> /var/log/pf9/comms/comms-stdout.log 2>&1'
+PIDFile=/var/run/pf9-comms.pid
+Restart=on-failure
+User=pf9
+Group=pf9group
+RestartSec=30
+
+[Install]
+Alias=pf9-comms
+
+[Install]
+WantedBy=multi-user.target

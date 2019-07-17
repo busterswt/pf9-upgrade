@@ -1,0 +1,25 @@
+[Unit]
+Description=Platform9 Host Agent Service
+ConditionPathExists=/opt/pf9/hostagent/bin/pf9-hostd
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/opt/pf9/hostagent/pf9-hostagent.env
+ExecStartPre=/opt/pf9/hostagent/pf9-hostagent-prestart.sh
+PermissionsStartOnly=true
+ExecStart=/bin/bash -c '/opt/pf9/hostagent/bin/pf9-hostd >> /var/log/pf9/hostagent-daemon.log 2>&1'
+PIDFile=/var/run/pf9-hostagent.pid
+Restart=always
+User=pf9
+Group=pf9group
+RestartSec=30
+StartLimitIntervalSec=600
+StartLimitBurst=6
+RestartPreventExitStatus=0
+
+[Install]
+Alias=pf9-hostd
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,59 @@
+---
+# These tasks fix some potential libvirt issues
+# post 14->16 upgrade
+
+- name: Grab libvirt PID(s)
+  command: pgrep libvirt
+  register: libvirt_process
+  ignore_errors: yes
+
+- name: Set libvirt facts
+  set_fact:
+    libvirt_pid: "{{ item | to_yaml }}"
+    kill_libvirt: False
+  with_items:
+    - "{{ libvirt_process.stdout_lines }}"
+  when:
+    - libvirt_process.stdout_lines is defined
+
+- name: Set libvirt command output
+  command: "ps --no-headers -o command {{ libvirt_pid }}"
+  register: libvirt_command
+
+- debug:
+    msg: "libvirt command: {{ libvirt_command.stdout }}"
+  when: libvirt_command is defined
+
+- name: Set kill_libvirt to true if -d is set
+  set_fact:
+    kill_libvirt: True
+  when: "'-d' in libvirt_command.stdout"
+
+- name: Stop libvirt-bin service
+  service:
+    name: libvirt-bin
+    state: stopped
+  when:  kill_libvirt
+
+- name: Kill hung libvirt process(es)
+  command: "kill -9 {{ libvirt_pid }}"
+  when: kill_libvirt
+
+- name: Verify process is dead
+  wait_for:
+    path: "/proc/{{ libvirt_pid }}/status"
+    state: absent
+  ignore_errors: yes
+  when: kill_libvirt
+
+# This should be done post-trusty (stop libvirt and change the flag)
+- name: Remove -d flag from libvirt-bin
+  replace:
+    path: /etc/default/libvirt-bin
+    regexp: '^libvirtd_opts="-l -d"$'
+    replace: 'libvirtd_opts="-l"'
+
+- name: Start libvirt-bin service
+  service:
+    name: libvirt-bin
+    state: started

@@ -1,0 +1,23 @@
+---
+###############################################################################
+# This playbook can be used to:
+#
+# - Upgrade 14.04 LTS to latest 16.04 LTS
+# - Update early 16.04 LTS to latest 16.04 LTS
+#
+# It cannot be used to upgrade any other system at this time, including CentOS
+#
+# Prerequisites:
+#
+# - Stop running VMs
+# - Verify third-party apt repositories can support 16.04 LTS (from 14.04 LTS)
+# - TBD
+#
+# Based on: https://github.com/debops/debops-playbooks/
+###############################################################################
+
+- hosts: hypervisors
+  become: true
+  roles:
+    - host-upgrade
+

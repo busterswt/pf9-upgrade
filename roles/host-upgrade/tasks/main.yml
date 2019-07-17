@@ -1,0 +1,32 @@
+---
+############################################################
+# Step 0
+#
+# Bail if we don't meet some very basic requirements
+############################################################
+
+- debug:
+    msg: "Host is running {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+- name: Fail fast when we don't meet some basic requirements
+  fail:
+    msg: "Operating system is not Ubuntu 14.04 LTS or 16.04 LTS. This playbook is not compatible with this system."
+  when:
+    - ansible_distribution != "Ubuntu"
+    - ansible_distribution_version != ("14.04" or "16.04")
+
+- debug: msg="{{ dist_upgrade_version_map }}"
+
+- include_tasks: prerequisites.yml
+
+- include_tasks: trusty.yml
+  when: ansible_distribution_version == "14.04"
+
+
+# We want some kind of validation at the beginning of the playbook, like 'type 1804' or something like that
+- include_tasks: xenial.yml
+  when: ansible_distribution_version == "16.04"
+
+#- include_tasks: bionic.yml
+#  when: ansible_distribution_version == "18.04"
+

@@ -1,0 +1,5 @@
+---
+dist_upgrade_version_map: {'trusty':'xenial', 'xenial':'bionic'}
+dist_upgrade_current_release: '{{ ansible_distribution_release }}'
+dist_upgrade_new_release: '{{ dist_upgrade_version_map[dist_upgrade_current_release] }}'
+dist_upgrade_lockfile: '/tmp/dist-upgrade-in-progress'

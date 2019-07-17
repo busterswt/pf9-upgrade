@@ -1,0 +1,20 @@
+[Unit]
+Description=Platform9 OpenStack noVNC proxy service
+ConditionPathExists=/opt/pf9/venv/bin/pf9-novncproxy
+
+[Service]
+Type=simple
+EnvironmentFile=/opt/pf9/venv/nova.env
+ExecStart=/opt/pf9/venv/bin/pf9-novncproxy --config-dir /opt/pf9/etc/nova/conf.d --web /opt/pf9/novnc --log-file /var/log/pf9/novncproxy.log
+PIDFile=/var/run/pf9-novncproxy.pid
+# To avoid log duplication in syslog and service log redirect stdout and stderr to null
+StandardOutput=null
+StandardError=null
+# Service is monitored by pf9-hostagent service
+Restart=no
+User=pf9
+Group=pf9group
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

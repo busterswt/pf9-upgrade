@@ -1,0 +1,41 @@
+---
+# The tasks here will:
+# remove pf9-comms pf9-hostagent pf9-novncproxy pf9-ostackhost pf9-sidekick init.d files
+# create systemd unit files
+
+# If found, delete old init files. 
+# These will be replaced by systemd units.
+- name: Delete old init files (if found)
+  file:
+    state: absent
+    path: "/etc/init.d/{{ item }}"
+  with_items:
+    - pf9-comms
+    - pf9-hostagent
+    - pf9-sidekick
+    - pf9-novncproxy
+    - pf9-ostackhost
+
+# Create new unit files (using templates)
+- name: Create systemd unit file(s) for Platform9 service(s)
+  template:
+    src: "{{ item }}.j2"
+    dest: "/lib/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: '0644'
+  with_items:
+    - pf9-comms.service
+    - pf9-hostagent.service
+    - pf9-sidekick.service
+    - pf9-novncproxy.service
+    - pf9-ostackhost.service
+
+- name: Enable pf9 services
+  systemd:
+    name: "{{ item }}"
+    daemon_reload: yes
+    enabled: yes
+  with_items:
+    - pf9-comms
+    - pf9-hostagent

@@ -1,0 +1,106 @@
+---
+# This is the 14.04 task file
+# Tasks here will prepare/perform upgrade
+
+- name: Set release-upgrades prompt to lts
+  ini_file:
+    path: /etc/update-manager/release-upgrades
+    section: DEFAULT
+    option: Prompt
+    value: lts
+    mode: '0600'
+    backup: yes
+
+- name: Create prompt override file
+  copy:
+    dest: /etc/apt/apt.conf.d/pf9-upgrade-prompts
+    content: 'DPkg::options { "--force-confdef"; "--force-confnew"; }'
+
+- name: Run apt upgrade
+  apt:
+    upgrade: yes
+    update_cache: yes
+    cache_valid_time: 3600
+  register: apt_upgrade
+
+- name: Run apt dist-upgrade
+  apt:
+    upgrade: dist
+    update_cache: yes
+    cache_valid_time: 3600
+  register: apt_dist_upgrade
+
+- name: Install necessary packages
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - update-manager-core
+
+- debug:
+    msg: "{{ apt_upgrade }}"
+
+- debug:
+    msg: "{{ apt_dist_upgrade }}"
+
+# Do some cleanup
+- name: Remove useless packages from the cache
+  apt:
+    autoclean: yes
+
+- name: Remove dependencies that are no longer required
+  apt:
+    autoremove: yes
+
+# Reboot the host if either apt_upgrade or apt_dist_upgrade changed
+- name: Reboot host after initial apt upgrades
+  reboot:
+    msg: "Platform9 - Host is being rebooted for upgrades!"
+    reboot_timeout: 900
+    post_reboot_delay: 30
+    test_command: uname
+  when: apt_upgrade.changed or apt_dist_upgrade.changed
+  register: reboot_results
+
+- debug:
+    msg: "Reboot results: {{ reboot_results | default('N/A') }}"
+
+# Create a file to indicate a reboot is needed before
+# running subsequent playbooks
+- name: Create a reboot file
+  file:
+    path: /tmp/reboot_needed
+    state: touch
+
+- name: Run do-release-upgrade
+  command: do-release-upgrade -f DistUpgradeViewNonInteractive
+  register: do_release_upgrade
+
+- name: Delete prompt override file
+  file:
+    path: /etc/apt/apt.conf.d/pf9-upgrade-prompts
+    state: absent
+
+- debug:
+    msg: "Release upgrade: {{ do_release_upgrade | default('Error') }}"
+  when: do_release_upgrade is defined
+# ^^ How do we know this was successful??
+
+- name: Check for reboot file
+  stat:
+    path: /tmp/reboot_needed
+  register: reboot_needed
+
+- name: Prompt if reboot is needed
+  debug:
+    msg: Please reboot the host before proceeding
+  when: reboot_needed.stat.exists
+  
+
+# Reboot!
+# if $upgraded is set, then reboot the host(s)
+# Check to see if the reboot happens automatically. Not sure...
+
+

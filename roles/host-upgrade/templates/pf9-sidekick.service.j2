@@ -1,0 +1,21 @@
+[Unit]
+Description=Platform9 Sidekick Service
+ConditionPathExists=/opt/pf9/sidekick/pf9-sidekick.js
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/pf9/pf9-sidekick.env
+ExecStartPre=/bin/mkdir -p /var/log/pf9/sidekick
+ExecStart=/bin/bash -c '/opt/pf9/sidekick/pf9-sidekick.js >> /var/log/pf9/sidekick/sidekick-stdout.log 2>&1'
+PIDFile=/var/run/pf9-sidekick.pid
+Restart=on-failure
+User=pf9
+Group=pf9group
+RestartSec=10
+
+[Install]
+Alias=pf9-sidekick
+
+[Install]
+WantedBy=multi-user.target

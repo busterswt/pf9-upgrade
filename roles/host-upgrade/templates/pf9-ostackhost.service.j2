@@ -1,0 +1,24 @@
+[Unit]
+Description=Platform9 OpenStack Compute service
+ConditionPathExists=/opt/pf9/venv/bin/pf9-ostackhost
+ConditionPathExists=/opt/pf9/venv/bin/pf9-nova-prestart-script.sh
+Wants=dbus.service
+Wants=libvirtd.service
+
+[Service]
+Type=simple
+ExecStartPre=/opt/pf9/venv/bin/pf9-nova-prestart-script.sh
+EnvironmentFile=/opt/pf9/venv/nova.env
+PermissionsStartOnly=true
+ExecStart=/opt/pf9/venv/bin/pf9-ostackhost --config-dir /opt/pf9/etc/nova/conf.d/ --log-file /var/log/pf9/ostackhost.log
+PIDFile=/var/run/pf9-ostackhost.pid
+# To avoid log duplication to syslog and service log redirect stdout and stderr to null
+StandardOutput=null
+StandardError=null
+# Service monitored by pf9-hostagent service
+Restart=no
+User=pf9
+Group=pf9group
+
+[Install]
+WantedBy=multi-user.target
